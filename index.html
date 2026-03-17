@@ -4,6 +4,9 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Poker Tournament Tracker</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&display=swap" rel="stylesheet">
 <style>
 :root {
   --bg: #09111e;
@@ -36,7 +39,7 @@ html, body {
 #app {
   height: 100vh;
   display: grid;
-  grid-template-rows: auto 1fr auto auto auto;
+  grid-template-rows: auto minmax(0, 38vh) auto 1fr auto;
 }
 
 /* ---- TOP BAR ---- */
@@ -78,7 +81,6 @@ html, body {
   display: block;
   font-size: clamp(1.2rem, 2.4vw, 2.4rem);
   font-weight: 700;
-  font-variant-numeric: tabular-nums;
   color: var(--text);
 }
 .wall-clock .clock-label {
@@ -99,7 +101,7 @@ html, body {
 }
 
 .timer-section-label {
-  font-size: clamp(0.7rem, 1.2vw, 1.2rem);
+  font-size: clamp(1rem, 1.8vw, 1.8rem);
   text-transform: uppercase;
   letter-spacing: 0.2em;
   color: var(--text-muted);
@@ -113,7 +115,7 @@ html, body {
   align-items: center;
 }
 #start-time-value {
-  font-size: clamp(4rem, 14vw, 18vh);
+  font-size: clamp(6rem, 22vw, 28vh);
   font-weight: 900;
   color: var(--gold);
   letter-spacing: 0.04em;
@@ -129,18 +131,41 @@ html, body {
   width: 100%;
 }
 #countdown {
-  font-size: clamp(5rem, 18vw, 22vh);
+  font-size: clamp(6rem, 22vw, 28vh);
   font-weight: 900;
-  font-variant-numeric: tabular-nums;
-  letter-spacing: -0.02em;
+  letter-spacing: 0.02em;
   line-height: 1;
   color: var(--text);
   transition: color 0.4s;
 }
 #countdown.warning { color: var(--orange); animation: pulse 1s ease-in-out infinite; }
 #countdown.critical { color: var(--red); animation: pulse 0.5s ease-in-out infinite; }
+#countdown.editable {
+  cursor: pointer;
+  border-bottom: 3px solid var(--gold);
+  padding-bottom: 2px;
+}
+#countdown-input {
+  font-size: clamp(5rem, 18vw, 22vh);
+  font-family: 'Share Tech Mono', ui-monospace, 'Cascadia Code', 'Segoe UI Mono', Consolas, monospace;
+  font-weight: 900;
+  letter-spacing: 0.02em;
+  line-height: 1;
+  color: var(--gold);
+  background: transparent;
+  border: none;
+  border-bottom: 3px solid var(--gold);
+  outline: none;
+  text-align: center;
+  width: 6ch;
+}
 
 @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.65} }
+
+#countdown, #start-time-value, .wall-clock .clock-time,
+#current-blinds-value, #next-blinds-value, #round-badge {
+  font-family: 'Share Tech Mono', ui-monospace, 'Cascadia Code', 'Segoe UI Mono', Consolas, monospace;
+}
 
 /* Progress bar */
 .progress-wrap {
@@ -186,7 +211,7 @@ html, body {
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  padding: 1.2vh 3vw;
+  padding: 2.5vh 3vw;
   flex: 1;
   text-align: center;
 }
@@ -196,36 +221,33 @@ html, body {
 }
 
 .blinds-block-label {
-  font-size: clamp(0.65rem, 1vw, 1rem);
+  font-size: clamp(1rem, 1.8vw, 1.8rem);
   text-transform: uppercase;
   letter-spacing: 0.2em;
-  color: var(--text-muted);
+  color: var(--text-dim);
   margin-bottom: 0.3em;
 }
 
 #current-blinds-value {
-  font-size: clamp(2.5rem, 6.5vw, 9vh);
+  font-size: clamp(4rem, 10vw, 16vh);
   font-weight: 900;
   color: var(--green);
-  font-variant-numeric: tabular-nums;
   line-height: 1;
-  letter-spacing: -0.01em;
 }
 #current-blinds-value.break { color: var(--gold); }
 
 #next-blinds-value {
-  font-size: clamp(1.5rem, 3.5vw, 5vh);
+  font-size: clamp(2.5rem, 6.5vw, 11vh);
   font-weight: 700;
-  color: var(--text-dim);
-  font-variant-numeric: tabular-nums;
+  color: var(--text);
   line-height: 1;
 }
 #next-blinds-value.break { color: var(--gold-dim); }
 
 .next-round-info {
-  font-size: clamp(0.6rem, 0.9vw, 0.9rem);
-  color: var(--text-muted);
-  margin-top: 0.3em;
+  font-size: clamp(1rem, 1.6vw, 1.6rem);
+  color: var(--text-dim);
+  margin-top: 0.4em;
   text-transform: uppercase;
   letter-spacing: 0.12em;
 }
@@ -248,21 +270,22 @@ html, body {
 }
 
 .chip-circle {
-  width: clamp(44px, 5.5vw, 88px);
-  height: clamp(44px, 5.5vw, 88px);
+  position: relative;
+  width: clamp(80px, 10vw, 160px);
+  height: clamp(80px, 10vw, 160px);
   border-radius: 50%;
   display: flex;
   align-items: center;
   justify-content: center;
   font-weight: 900;
-  font-size: clamp(0.55rem, 1.1vw, 1.1rem);
-  border: 3px dashed rgba(255,255,255,0.35);
+  font-size: clamp(1rem, 1.8vw, 1.8rem);
+  border: none;
   text-shadow: 0 1px 3px rgba(0,0,0,0.7);
   box-shadow: 0 3px 14px rgba(0,0,0,0.6), inset 0 2px 0 rgba(255,255,255,0.15);
 }
 
 .chip-denom {
-  font-size: clamp(0.7rem, 1.2vw, 1.2rem);
+  font-size: clamp(0.9rem, 1.6vw, 1.6rem);
   font-weight: 700;
   color: var(--text-dim);
 }
@@ -277,6 +300,11 @@ html, body {
   background: var(--surface);
   border-top: 1px solid var(--border);
   flex-wrap: wrap;
+  transition: opacity 0.5s, visibility 0.5s;
+}
+.controls-bar.hidden {
+  opacity: 0;
+  visibility: hidden;
 }
 
 .btn {
@@ -637,6 +665,41 @@ input[type="color"] {
       <div class="cfg-add-row">
         <button class="btn-xs btn-xs-green" onclick="addLevelRow()">+ Add Level</button>
         <button class="btn-xs btn-xs-ghost" onclick="addBreakRow()">+ Add Break</button>
+        <button class="btn-xs btn-xs-ghost" onclick="toggleAutoGen()">⚡ Auto-Generate</button>
+      </div>
+
+      <div id="autogen-panel" style="display:none; margin-top:1rem; padding:1rem; background:var(--bg); border-radius:0.5rem; border:1px solid var(--border)">
+        <div class="cfg-section-title" style="margin-bottom:0.8rem">Auto-Generate from Starting Stack</div>
+        <div class="cfg-row">
+          <div class="cfg-field">
+            <label>Starting Stack</label>
+            <input type="number" id="ag-stack" value="10000" min="100" step="100" oninput="previewFactor()">
+          </div>
+          <div class="cfg-field">
+            <label>Number of Levels</label>
+            <input type="number" id="ag-levels" value="12" min="3" max="30" oninput="previewFactor()">
+          </div>
+          <div class="cfg-field">
+            <label>Level Duration (min)</label>
+            <input type="number" id="ag-dur" value="20" min="5" max="60">
+          </div>
+          <div class="cfg-field">
+            <label>Number of Players</label>
+            <input type="number" id="ag-players" value="20" min="2" max="500" oninput="previewFactor()">
+          </div>
+          <div class="cfg-field">
+            <label>Increase Per Level <span id="ag-factor-preview" style="color:var(--gold)"></span></label>
+            <input type="number" id="ag-factor" value="2" min="1.1" max="5" step="0.01"
+              placeholder="auto" title="Leave blank to auto-calculate from player count">
+          </div>
+          <div class="cfg-field">
+            <label>Break After Every N Levels</label>
+            <input type="number" id="ag-break" value="4" min="0" max="10">
+          </div>
+        </div>
+        <div style="margin-top:0.75rem">
+          <button class="btn-xs btn-xs-green" onclick="autoGenerate()">⚡ Generate & Replace Levels</button>
+        </div>
       </div>
     </div>
 
@@ -646,6 +709,7 @@ input[type="color"] {
       <div class="chip-cfg-rows" id="chip-cfg-rows"></div>
       <div class="cfg-add-row">
         <button class="btn-xs btn-xs-green" onclick="addChipRow()">+ Add Chip</button>
+        <button class="btn-xs btn-xs-ghost" onclick="resetChipsToStandard()">↺ Reset to Standard</button>
       </div>
     </div>
 
@@ -660,7 +724,10 @@ input[type="color"] {
 
 <script>
 // ===================== DEFAULT CONFIG =====================
+const CFG_VERSION = 3;
+
 const DEFAULTS = {
+  version: CFG_VERSION,
   name: 'Poker Tournament',
   startTime: '19:00',
   warnSecs: 60,
@@ -680,12 +747,13 @@ const DEFAULTS = {
     { dur: 20, sb: 1000, bb: 2000, brk: false },
   ],
   chips: [
-    { val: 1,    color: '#e8e8e8', lbl: '1'    },
-    { val: 5,    color: '#c0392b', lbl: '5'    },
-    { val: 25,   color: '#1a5276', lbl: '25'   },
-    { val: 100,  color: '#1e8449', lbl: '100'  },
-    { val: 500,  color: '#212121', lbl: '500'  },
-    { val: 1000, color: '#6c3483', lbl: '1K'   },
+    { val: 1,    color: '#f0ece0', lbl: '1'    },  // White
+    { val: 5,    color: '#cc2200', lbl: '5'    },  // Red
+    { val: 25,   color: '#2e7d32', lbl: '25'   },  // Green
+    { val: 100,  color: '#1a1a1a', lbl: '100'  },  // Black
+    { val: 500,  color: '#6a1b9a', lbl: '500'  },  // Purple
+    { val: 1000, color: '#f9c800', lbl: '1K'   },  // Yellow
+    { val: 5000, color: '#880e4f', lbl: '5K'   },  // Burgundy
   ]
 };
 
@@ -704,7 +772,15 @@ let state = {
 function loadCfg() {
   try {
     const s = localStorage.getItem('ptcfg');
-    if (s) return JSON.parse(s);
+    if (s) {
+      const saved = JSON.parse(s);
+      if ((saved.version || 1) < CFG_VERSION) {
+        saved.chips = JSON.parse(JSON.stringify(DEFAULTS.chips));
+        saved.version = CFG_VERSION;
+        localStorage.setItem('ptcfg', JSON.stringify(saved));
+      }
+      return saved;
+    }
   } catch(e) {}
   return JSON.parse(JSON.stringify(DEFAULTS));
 }
@@ -785,7 +861,12 @@ function render() {
     // Countdown
     const cdEl = document.getElementById('countdown');
     cdEl.textContent = done ? '00:00' : fmt(state.secsLeft);
-    cdEl.classList.remove('warning','critical');
+    cdEl.classList.remove('warning','critical','editable');
+    cdEl.onclick = null;
+    if (state.phase === 'paused') {
+      cdEl.classList.add('editable');
+      cdEl.onclick = openTimeEdit;
+    }
     if (!done && state.phase === 'running') {
       if (state.secsLeft <= 30)                 cdEl.classList.add('critical');
       else if (state.secsLeft <= cfg.warnSecs)  cdEl.classList.add('warning');
@@ -878,9 +959,16 @@ function renderChips() {
     el.className = 'chip-item';
     el.innerHTML = `
       <div class="chip-circle" style="background:${chip.color};color:${tc}">
+        <svg style="position:absolute;inset:0;width:100%;height:100%;overflow:visible" aria-hidden="true">
+          <circle cx="50%" cy="50%" r="47%"
+            fill="none"
+            stroke="${tc === '#000' ? 'rgba(0,0,0,0.35)' : 'rgba(255,255,255,0.45)'}"
+            stroke-width="4"
+            stroke-dasharray="6 12"
+            stroke-linecap="round"/>
+        </svg>
         ${chip.lbl || fmtNum(chip.val)}
       </div>
-      <div class="chip-denom">${fmtNum(chip.val)}</div>
     `;
     area.appendChild(el);
   });
@@ -934,6 +1022,7 @@ function handlePrev() {
   }
 }
 
+
 function handleReset() {
   clearInterval(state.tid); state.tid = null;
   state.phase     = 'idle';
@@ -969,6 +1058,40 @@ function resetLevelTimer() {
   state.totalSecs  = currentLevel().dur * 60;
   state.secsLeft   = state.totalSecs;
   state.warnPlayed = false;
+}
+
+function openTimeEdit() {
+  if (state.phase !== 'paused') return;
+  const cd = document.getElementById('countdown');
+  cd.style.display = 'none';
+
+  const input = document.createElement('input');
+  input.id = 'countdown-input';
+  input.type = 'text';
+  input.value = fmt(state.secsLeft);
+  input.maxLength = 5;
+  cd.parentNode.insertBefore(input, cd);
+  input.select();
+
+  function commit() {
+    const parts = input.value.split(':');
+    if (parts.length === 2) {
+      const m = parseInt(parts[0]), s = parseInt(parts[1]);
+      if (!isNaN(m) && !isNaN(s)) {
+        state.secsLeft  = Math.max(0, Math.min(m * 60 + s, 5999));
+        state.totalSecs = Math.max(state.totalSecs, state.secsLeft);
+      }
+    }
+    input.remove();
+    cd.style.display = '';
+    render();
+  }
+
+  input.addEventListener('keydown', e => {
+    if (e.key === 'Enter') { e.preventDefault(); commit(); }
+    if (e.key === 'Escape') { input.remove(); cd.style.display = ''; }
+  });
+  input.addEventListener('blur', commit);
 }
 
 function startTick() {
@@ -1137,6 +1260,88 @@ function addBreakRow() {
   renumber();
 }
 
+function toggleAutoGen() {
+  const p = document.getElementById('autogen-panel');
+  p.style.display = p.style.display === 'none' ? '' : 'none';
+  if (p.style.display !== 'none') previewFactor();
+}
+
+function calcFactor(stack, players, numLvls, denoms) {
+  function snapToChip(val) {
+    let unit = denoms[0];
+    for (const d of denoms) { if (d <= val / 2) unit = d; }
+    return Math.max(unit, Math.round(val / unit) * unit);
+  }
+  const startingBB   = snapToChip(stack * 0.01);
+  const totalChips   = stack * players;
+  const finalBBTarget = snapToChip(totalChips / 10);
+  return Math.pow(finalBBTarget / startingBB, 1 / (numLvls - 1));
+}
+
+function previewFactor() {
+  const chipRows = document.querySelectorAll('.chip-cfg-row');
+  const denoms = Array.from(chipRows)
+    .map(r => parseInt(r.querySelectorAll('input')[0].value))
+    .filter(v => !isNaN(v) && v > 0).sort((a, b) => a - b);
+  if (denoms.length === 0) return;
+
+  const stack   = parseInt(document.getElementById('ag-stack').value)   || 10000;
+  const players = parseInt(document.getElementById('ag-players').value) || 20;
+  const numLvls = parseInt(document.getElementById('ag-levels').value)  || 12;
+
+  const f = calcFactor(stack, players, numLvls, denoms);
+  document.getElementById('ag-factor-preview').textContent = `(auto: ${f.toFixed(2)}×)`;
+  document.getElementById('ag-factor').value = f.toFixed(2);
+}
+
+function autoGenerate() {
+  // Read current chips from the config form
+  const chipRows = document.querySelectorAll('.chip-cfg-row');
+  const denoms = Array.from(chipRows)
+    .map(r => parseInt(r.querySelectorAll('input')[0].value))
+    .filter(v => !isNaN(v) && v > 0)
+    .sort((a, b) => a - b);
+
+  if (denoms.length === 0) { alert('Add chip denominations first.'); return; }
+
+  const stack    = parseInt(document.getElementById('ag-stack').value)    || 10000;
+  const players  = parseInt(document.getElementById('ag-players').value)  || 20;
+  const numLvls  = parseInt(document.getElementById('ag-levels').value)   || 12;
+  const dur      = parseInt(document.getElementById('ag-dur').value)      || 20;
+  const factor   = parseFloat(document.getElementById('ag-factor').value) || calcFactor(stack, players, numLvls, denoms);
+  const breakEvery = parseInt(document.getElementById('ag-break').value)  ?? 4;
+
+  function snapToChip(val) {
+    // Round to the nearest multiple of the largest denom that fits cleanly
+    let unit = denoms[0];
+    for (const d of denoms) {
+      if (d <= val / 2) unit = d;
+    }
+    return Math.max(unit, Math.round(val / unit) * unit);
+  }
+
+  // Start small blind at ~0.5% of stack, snapped to a chip denom
+  let sb = snapToChip(stack * 0.005);
+
+  const levels = [];
+  for (let i = 0; i < numLvls; i++) {
+    if (breakEvery > 0 && i > 0 && i % breakEvery === 0) {
+      levels.push({ dur: 15, sb: 0, bb: 0, brk: true });
+    }
+    const bb = snapToChip(sb * 2);
+    levels.push({ dur, sb, bb, brk: false });
+    sb = snapToChip(sb * factor);
+  }
+
+  // Rebuild table
+  const tbody = document.getElementById('levels-tbody');
+  tbody.innerHTML = '';
+  levels.forEach(lvl => appendLevelRow(lvl));
+  renumber();
+
+  document.getElementById('autogen-panel').style.display = 'none';
+}
+
 function removeRow(btn) {
   const tbody = document.getElementById('levels-tbody');
   if (tbody.querySelectorAll('tr[data-row]').length <= 1) return;
@@ -1190,6 +1395,13 @@ function appendChipRow(chip = { val:100, color:'#888888', lbl:'' }) {
 
 function addChipRow() { appendChipRow(); }
 
+function resetChipsToStandard() {
+  const container = document.getElementById('chip-cfg-rows');
+  container.innerHTML = '';
+  DEFAULTS.chips.forEach(c => appendChipRow(c));
+  previewFactor();
+}
+
 // ===================== INIT =====================
 function init() {
   state.lvl       = 0;
@@ -1201,6 +1413,18 @@ function init() {
   render();
   tickClock();
   setInterval(tickClock, 1000);
+
+  // Auto-hide controls
+  let hideTimer = null;
+  const controls = document.querySelector('.controls-bar');
+  function showControls() {
+    controls.classList.remove('hidden');
+    clearTimeout(hideTimer);
+    hideTimer = setTimeout(() => controls.classList.add('hidden'), 3000);
+  }
+  document.addEventListener('mousemove', showControls);
+  document.addEventListener('touchstart', showControls);
+  showControls();
 
   // Show config on first-ever load (no saved config)
   if (!localStorage.getItem('ptcfg')) {

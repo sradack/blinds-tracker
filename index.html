@@ -984,8 +984,8 @@ function fmt(secs) {
 }
 
 function fmtNum(n) {
-  if (n >= 1000000) return (n/1000000).toFixed(n%1000000===0?0:1)+'M';
-  if (n >= 1000)    return (n/1000).toFixed(n%1000===0?0:1)+'K';
+  if (n >= 1000000) { const v = n/1000000; return (v >= 10 ? Math.round(v) : +v.toFixed(1)) + 'M'; }
+  if (n >= 1000)    { const v = n/1000;    return (v >= 10 ? Math.round(v) : +v.toFixed(1)) + 'K'; }
   return String(n);
 }
 
@@ -1477,9 +1477,20 @@ function saveConfig() {
     ? Math.min(...cfg.chips.map(c => c.val))
     : 1;
   cfg.levels.forEach(lvl => {
-    if (!lvl.brk) {
-      lvl.sb = Math.max(smallestChip, Math.round(lvl.sb / smallestChip) * smallestChip);
-      lvl.bb = Math.max(smallestChip, Math.round(lvl.bb / smallestChip) * smallestChip);
+    if (!lvl.brk && lvl.sb > 0) {
+      const mults = [1, 1.5, 2, 3, 4, 5, 6, 8];
+      const val = lvl.sb;
+      let best = smallestChip, bestDist = Infinity;
+      for (let dec = 1; dec <= val * 10; dec *= 10) {
+        for (const m of mults) {
+          const v = Math.round(dec * m / smallestChip) * smallestChip;
+          if (v <= 0) continue;
+          const d = Math.abs(v - val);
+          if (d < bestDist || (d === bestDist && v > best)) { bestDist = d; best = v; }
+        }
+      }
+      lvl.sb = Math.max(smallestChip, best);
+      lvl.bb = lvl.sb * 2;
     }
   });
 
@@ -1555,11 +1566,21 @@ function toggleAutoGen() {
 
 function calcFactor(stack, players, numLvls, denoms) {
   function snapToChip(val) {
+    // Snap to the nearest standard poker blind value: 1×, 1.5×, 2×, 3×, 4×, 5×, 6×, 8× per decade
     const smallest = denoms[0];
-    let unit = smallest;
-    for (const d of denoms) { if (d <= val / 2) unit = d; }
-    const snapped = Math.max(unit, Math.round(val / unit) * unit);
-    return Math.max(smallest, Math.round(snapped / smallest) * smallest);
+    if (val <= 0) return smallest;
+    const mults = [1, 1.5, 2, 3, 4, 5, 6, 8];
+    let best = smallest, bestDist = Infinity;
+    for (let dec = 1; dec <= val * 10; dec *= 10) {
+      for (const m of mults) {
+        const v = Math.round(dec * m / smallest) * smallest;
+        if (v <= 0) continue;
+        const d = Math.abs(v - val);
+        // Prefer higher value on ties so e.g. 450 → 500 not 400
+        if (d < bestDist || (d === bestDist && v > best)) { bestDist = d; best = v; }
+      }
+    }
+    return Math.max(smallest, best);
   }
   const startingBB   = snapToChip(stack * 0.01);
   const totalChips   = stack * players;
@@ -1601,11 +1622,21 @@ function autoGenerate() {
   const breakEvery = parseInt(document.getElementById('ag-break').value)  ?? 4;
 
   function snapToChip(val) {
+    // Snap to the nearest standard poker blind value: 1×, 1.5×, 2×, 3×, 4×, 5×, 6×, 8× per decade
     const smallest = denoms[0];
-    let unit = smallest;
-    for (const d of denoms) { if (d <= val / 2) unit = d; }
-    const snapped = Math.max(unit, Math.round(val / unit) * unit);
-    return Math.max(smallest, Math.round(snapped / smallest) * smallest);
+    if (val <= 0) return smallest;
+    const mults = [1, 1.5, 2, 3, 4, 5, 6, 8];
+    let best = smallest, bestDist = Infinity;
+    for (let dec = 1; dec <= val * 10; dec *= 10) {
+      for (const m of mults) {
+        const v = Math.round(dec * m / smallest) * smallest;
+        if (v <= 0) continue;
+        const d = Math.abs(v - val);
+        // Prefer higher value on ties so e.g. 450 → 500 not 400
+        if (d < bestDist || (d === bestDist && v > best)) { bestDist = d; best = v; }
+      }
+    }
+    return Math.max(smallest, best);
   }
 
   // Start small blind at ~0.5% of stack, snapped to a chip denom
@@ -1616,9 +1647,22 @@ function autoGenerate() {
     if (breakEvery > 0 && i > 0 && i % breakEvery === 0) {
       levels.push({ dur: 15, sb: 0, bb: 0, brk: true });
     }
-    const bb = snapToChip(sb * 2);
+    const bb = sb * 2;
     levels.push({ dur, sb, bb, brk: false });
-    sb = snapToChip(sb * factor);
+    let nextSb = snapToChip(sb * factor);
+    if (nextSb <= sb) {
+      // Factor too small to reach the next table value — find the nearest one above sb
+      const mults = [1, 1.5, 2, 3, 4, 5, 6, 8];
+      let next = Infinity;
+      for (let dec = 1; dec <= sb * 100; dec *= 10) {
+        for (const m of mults) {
+          const v = Math.round(dec * m / denoms[0]) * denoms[0];
+          if (v > sb && v < next) next = v;
+        }
+      }
+      nextSb = isFinite(next) ? next : sb + denoms[0];
+    }
+    sb = nextSb;
   }
 
   // Rebuild table

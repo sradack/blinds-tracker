@@ -1324,16 +1324,24 @@ function saveConfig() {
     };
   });
 
-  // Collect chips
+  // Collect chips first so we can sanitize blind values
   const chipRows = document.querySelectorAll('.chip-cfg-row');
   cfg.chips = Array.from(chipRows).map(row => {
     const ins = row.querySelectorAll('input');
-    return {
-      val:   parseInt(ins[0].value) || 1,
-      color: ins[1].value,
-      lbl:   ins[2].value.trim(),
-    };
+    return { val: parseInt(ins[0].value) || 1, color: ins[1].value, lbl: ins[2].value.trim() };
   }).filter(c => c.val > 0);
+
+  // Snap all blind values to nearest multiple of smallest chip so every blind is postable
+  const smallestChip = cfg.chips.length
+    ? Math.min(...cfg.chips.map(c => c.val))
+    : 1;
+  cfg.levels.forEach(lvl => {
+    if (!lvl.brk) {
+      lvl.sb = Math.max(smallestChip, Math.round(lvl.sb / smallestChip) * smallestChip);
+      lvl.bb = Math.max(smallestChip, Math.round(lvl.bb / smallestChip) * smallestChip);
+    }
+  });
+
 
   // Guard bounds
   if (state.lvl >= cfg.levels.length) {
@@ -1406,9 +1414,11 @@ function toggleAutoGen() {
 
 function calcFactor(stack, players, numLvls, denoms) {
   function snapToChip(val) {
-    let unit = denoms[0];
+    const smallest = denoms[0];
+    let unit = smallest;
     for (const d of denoms) { if (d <= val / 2) unit = d; }
-    return Math.max(unit, Math.round(val / unit) * unit);
+    const snapped = Math.max(unit, Math.round(val / unit) * unit);
+    return Math.max(smallest, Math.round(snapped / smallest) * smallest);
   }
   const startingBB   = snapToChip(stack * 0.01);
   const totalChips   = stack * players;
@@ -1450,12 +1460,11 @@ function autoGenerate() {
   const breakEvery = parseInt(document.getElementById('ag-break').value)  ?? 4;
 
   function snapToChip(val) {
-    // Round to the nearest multiple of the largest denom that fits cleanly
-    let unit = denoms[0];
-    for (const d of denoms) {
-      if (d <= val / 2) unit = d;
-    }
-    return Math.max(unit, Math.round(val / unit) * unit);
+    const smallest = denoms[0];
+    let unit = smallest;
+    for (const d of denoms) { if (d <= val / 2) unit = d; }
+    const snapped = Math.max(unit, Math.round(val / unit) * unit);
+    return Math.max(smallest, Math.round(snapped / smallest) * smallest);
   }
 
   // Start small blind at ~0.5% of stack, snapped to a chip denom

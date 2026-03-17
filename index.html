@@ -40,6 +40,7 @@ html, body {
   height: 100vh;
   display: grid;
   grid-template-rows: auto minmax(0, 38vh) auto 1fr auto;
+  margin-right: clamp(260px, 25vw, 420px);
 }
 
 /* ---- TOP BAR ---- */
@@ -597,6 +598,109 @@ input[type="color"] {
   opacity: 0.6;
   pointer-events: none;
 }
+
+/* ===================== LEVELS SIDEBAR ===================== */
+#levels-sidebar {
+  position: fixed;
+  right: 0;
+  top: 0;
+  bottom: 0;
+  width: clamp(260px, 25vw, 420px);
+  background: var(--surface);
+  border-left: 1px solid var(--border);
+  display: flex;
+  flex-direction: column;
+  z-index: 200;
+  overflow: hidden;
+}
+
+.sidebar-header {
+  padding: 1vh 0.8vw 0.8vh;
+  font-size: clamp(0.75rem, 1vw, 1rem);
+  text-transform: uppercase;
+  letter-spacing: 0.18em;
+  color: var(--text-muted);
+  border-bottom: 1px solid var(--border);
+  text-align: center;
+  flex-shrink: 0;
+}
+
+#sidebar-levels {
+  overflow-y: auto;
+  flex: 1;
+  scrollbar-width: thin;
+  scrollbar-color: var(--border) transparent;
+}
+#sidebar-levels::-webkit-scrollbar { width: 4px; }
+#sidebar-levels::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
+
+.sl-row {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 0.5vw;
+  padding: 0.8vh 0.7vw;
+  border-bottom: 1px solid rgba(38,48,72,0.5);
+  cursor: default;
+  transition: background 0.15s;
+  min-height: 0;
+}
+
+.sl-row.past {
+  opacity: 0.3;
+}
+
+.sl-row.current {
+  background: rgba(46,204,113,0.1);
+  border-left: 3px solid var(--green);
+  padding-left: calc(0.9vw - 3px);
+}
+
+.sl-row.current-break {
+  background: rgba(212,160,23,0.1);
+  border-left: 3px solid var(--gold);
+  padding-left: calc(0.9vw - 3px);
+}
+
+.sl-num {
+  font-size: clamp(0.65rem, 0.85vw, 0.9rem);
+  color: var(--text-muted);
+  letter-spacing: 0.06em;
+  width: 2.4em;
+  flex-shrink: 0;
+  text-align: center;
+}
+
+.sl-main {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-width: 0;
+}
+
+.sl-blinds {
+  font-family: 'Share Tech Mono', ui-monospace, 'Cascadia Code', 'Segoe UI Mono', Consolas, monospace;
+  font-size: clamp(1.4rem, 2vw, 2.4rem);
+  font-weight: 700;
+  color: var(--text);
+  line-height: 1.1;
+  white-space: nowrap;
+}
+
+.sl-row.current .sl-blinds       { color: var(--green); }
+.sl-row.current-break .sl-blinds { color: var(--gold); }
+.sl-row.past .sl-blinds          { color: var(--text-dim); }
+
+.sl-dur {
+  font-size: clamp(0.65rem, 0.85vw, 0.9rem);
+  color: var(--text-muted);
+  margin-top: 0.1em;
+}
+
+.sl-row.break-row .sl-blinds {
+  color: var(--gold-dim);
+  font-size: clamp(1.2rem, 1.6vw, 1.9rem);
+}
 </style>
 </head>
 <body>
@@ -775,6 +879,12 @@ input[type="color"] {
       <button class="btn btn-ghost" onclick="hideConfig()">CANCEL</button>
     </div>
   </div>
+</div>
+
+<!-- ===================== LEVELS SIDEBAR ===================== -->
+<div id="levels-sidebar">
+  <div class="sidebar-header">Blind Levels</div>
+  <div id="sidebar-levels"></div>
 </div>
 
 <div class="kbd-hints">SPACE: pause &nbsp;|&nbsp; ← →: level &nbsp;|&nbsp; F: fullscreen</div>
@@ -1007,6 +1117,8 @@ function render() {
   btnPrev.disabled = (state.lvl === 0);
   btnNext.disabled = (state.lvl >= cfg.levels.length-1);
 
+  renderLevelsSidebar();
+
   // Starting stack breakdown vs chip denominations
   const stackDisplay = document.getElementById('stack-display');
   const chipsArea    = document.getElementById('chips-area');
@@ -1107,6 +1219,35 @@ function renderChips() {
     el.innerHTML = chipCircleHTML(chip);
     area.appendChild(el);
   });
+}
+
+function renderLevelsSidebar() {
+  const container = document.getElementById('sidebar-levels');
+  container.innerHTML = '';
+  let currentEl = null;
+  cfg.levels.forEach((lvl, i) => {
+    const el = document.createElement('div');
+    const isCurrent = i === state.lvl;
+    const isPast    = i < state.lvl;
+    let cls = 'sl-row';
+    if (isCurrent) cls += lvl.brk ? ' current-break' : ' current';
+    else if (isPast) cls += ' past';
+    if (lvl.brk) cls += ' break-row';
+    el.className = cls;
+    const blindsText = lvl.brk ? 'BREAK' : `${fmtNum(lvl.sb)} / ${fmtNum(lvl.bb)}`;
+    el.innerHTML = `
+      <div class="sl-num">${lvl.brk ? 'BRK' : `R${i+1}`}</div>
+      <div class="sl-main">
+        <div class="sl-blinds">${blindsText}</div>
+        <div class="sl-dur">${lvl.dur}m</div>
+      </div>
+    `;
+    container.appendChild(el);
+    if (isCurrent) currentEl = el;
+  });
+  if (currentEl) {
+    currentEl.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+  }
 }
 
 // ===================== WALL CLOCK =====================

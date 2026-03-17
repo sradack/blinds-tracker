@@ -1,0 +1,1214 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Poker Tournament Tracker</title>
+<style>
+:root {
+  --bg: #09111e;
+  --surface: #111827;
+  --surface2: #1a2235;
+  --border: #263048;
+  --gold: #d4a017;
+  --gold-dim: #a07810;
+  --green: #2ecc71;
+  --green-dim: #1e8449;
+  --red: #e74c3c;
+  --orange: #e67e22;
+  --text: #f0f4ff;
+  --text-dim: #8896b0;
+  --text-muted: #4a5870;
+}
+
+* { margin: 0; padding: 0; box-sizing: border-box; }
+
+html, body {
+  height: 100%;
+  background: var(--bg);
+  color: var(--text);
+  font-family: 'Segoe UI', 'Arial', system-ui, sans-serif;
+  overflow: hidden;
+  user-select: none;
+}
+
+/* ===================== MAIN LAYOUT ===================== */
+#app {
+  height: 100vh;
+  display: grid;
+  grid-template-rows: auto 1fr auto auto auto;
+}
+
+/* ---- TOP BAR ---- */
+.top-bar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 1vh 2vw;
+  border-bottom: 1px solid var(--border);
+  background: var(--surface);
+  gap: 1vw;
+}
+
+#tournament-name {
+  font-size: clamp(1rem, 2vw, 2rem);
+  font-weight: 700;
+  color: var(--gold);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  flex: 1;
+}
+
+#round-badge {
+  background: var(--gold);
+  color: #000;
+  font-size: clamp(1rem, 2.2vw, 2.2rem);
+  font-weight: 900;
+  padding: 0.25em 0.9em;
+  border-radius: 0.35em;
+  letter-spacing: 0.04em;
+  white-space: nowrap;
+}
+
+.wall-clock {
+  text-align: right;
+  flex: 1;
+}
+.wall-clock .clock-time {
+  display: block;
+  font-size: clamp(1.2rem, 2.4vw, 2.4rem);
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  color: var(--text);
+}
+.wall-clock .clock-label {
+  font-size: clamp(0.6rem, 0.9vw, 0.9rem);
+  text-transform: uppercase;
+  letter-spacing: 0.15em;
+  color: var(--text-muted);
+}
+
+/* ---- TIMER AREA ---- */
+.timer-area {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+  padding: 1vh 2vw;
+}
+
+.timer-section-label {
+  font-size: clamp(0.7rem, 1.2vw, 1.2rem);
+  text-transform: uppercase;
+  letter-spacing: 0.2em;
+  color: var(--text-muted);
+  margin-bottom: 0.2em;
+}
+
+/* Idle: start time display */
+#start-time-display {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+#start-time-value {
+  font-size: clamp(4rem, 14vw, 18vh);
+  font-weight: 900;
+  color: var(--gold);
+  letter-spacing: 0.04em;
+  line-height: 1;
+  text-shadow: 0 0 60px rgba(212,160,23,0.25);
+}
+
+/* Running: countdown */
+#countdown-display {
+  display: none;
+  flex-direction: column;
+  align-items: center;
+  width: 100%;
+}
+#countdown {
+  font-size: clamp(5rem, 18vw, 22vh);
+  font-weight: 900;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.02em;
+  line-height: 1;
+  color: var(--text);
+  transition: color 0.4s;
+}
+#countdown.warning { color: var(--orange); animation: pulse 1s ease-in-out infinite; }
+#countdown.critical { color: var(--red); animation: pulse 0.5s ease-in-out infinite; }
+
+@keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.65} }
+
+/* Progress bar */
+.progress-wrap {
+  width: min(600px, 70vw);
+  height: 6px;
+  background: var(--border);
+  border-radius: 3px;
+  margin-top: 1.5vh;
+  overflow: hidden;
+}
+.progress-bar {
+  height: 100%;
+  background: var(--green);
+  border-radius: 3px;
+  transition: width 1s linear, background 0.4s;
+}
+.progress-bar.warning { background: var(--orange); }
+.progress-bar.critical { background: var(--red); }
+
+#status-text {
+  font-size: clamp(0.9rem, 1.6vw, 1.6rem);
+  text-transform: uppercase;
+  letter-spacing: 0.18em;
+  color: var(--text-dim);
+  margin-top: 0.4em;
+  min-height: 1.5em;
+}
+#status-text.paused { color: var(--orange); }
+#status-text.finished { color: var(--gold); }
+
+/* ---- BLINDS AREA ---- */
+.blinds-area {
+  display: flex;
+  align-items: stretch;
+  justify-content: center;
+  border-top: 1px solid var(--border);
+  border-bottom: 1px solid var(--border);
+  background: var(--surface);
+}
+
+.blinds-block {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 1.2vh 3vw;
+  flex: 1;
+  text-align: center;
+}
+
+.blinds-block + .blinds-block {
+  border-left: 1px solid var(--border);
+}
+
+.blinds-block-label {
+  font-size: clamp(0.65rem, 1vw, 1rem);
+  text-transform: uppercase;
+  letter-spacing: 0.2em;
+  color: var(--text-muted);
+  margin-bottom: 0.3em;
+}
+
+#current-blinds-value {
+  font-size: clamp(2.5rem, 6.5vw, 9vh);
+  font-weight: 900;
+  color: var(--green);
+  font-variant-numeric: tabular-nums;
+  line-height: 1;
+  letter-spacing: -0.01em;
+}
+#current-blinds-value.break { color: var(--gold); }
+
+#next-blinds-value {
+  font-size: clamp(1.5rem, 3.5vw, 5vh);
+  font-weight: 700;
+  color: var(--text-dim);
+  font-variant-numeric: tabular-nums;
+  line-height: 1;
+}
+#next-blinds-value.break { color: var(--gold-dim); }
+
+.next-round-info {
+  font-size: clamp(0.6rem, 0.9vw, 0.9rem);
+  color: var(--text-muted);
+  margin-top: 0.3em;
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+}
+
+/* ---- CHIPS AREA ---- */
+.chips-area {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: clamp(12px, 2.5vw, 40px);
+  padding: 1.2vh 2vw;
+  flex-wrap: wrap;
+}
+
+.chip-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.5vh;
+}
+
+.chip-circle {
+  width: clamp(44px, 5.5vw, 88px);
+  height: clamp(44px, 5.5vw, 88px);
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 900;
+  font-size: clamp(0.55rem, 1.1vw, 1.1rem);
+  border: 3px dashed rgba(255,255,255,0.35);
+  text-shadow: 0 1px 3px rgba(0,0,0,0.7);
+  box-shadow: 0 3px 14px rgba(0,0,0,0.6), inset 0 2px 0 rgba(255,255,255,0.15);
+}
+
+.chip-denom {
+  font-size: clamp(0.7rem, 1.2vw, 1.2rem);
+  font-weight: 700;
+  color: var(--text-dim);
+}
+
+/* ---- CONTROLS BAR ---- */
+.controls-bar {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: clamp(6px, 1vw, 16px);
+  padding: 1vh 2vw;
+  background: var(--surface);
+  border-top: 1px solid var(--border);
+  flex-wrap: wrap;
+}
+
+.btn {
+  padding: 0.5em 1.3em;
+  font-size: clamp(0.75rem, 1.3vw, 1.3rem);
+  border: none;
+  border-radius: 0.4em;
+  cursor: pointer;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  transition: transform 0.1s, opacity 0.15s;
+  white-space: nowrap;
+}
+.btn:hover:not(:disabled) { opacity: 0.85; }
+.btn:active:not(:disabled) { transform: scale(0.96); }
+.btn:disabled { opacity: 0.28; cursor: not-allowed; }
+
+.btn-green  { background: var(--green);   color: #fff; }
+.btn-orange { background: var(--orange);  color: #fff; }
+.btn-gold   { background: var(--gold);    color: #000; }
+.btn-red    { background: var(--red);     color: #fff; }
+.btn-ghost  { background: var(--surface2); color: var(--text-dim); border: 1px solid var(--border); }
+
+/* ===================== CONFIG OVERLAY ===================== */
+#config-overlay {
+  display: none;
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.92);
+  z-index: 1000;
+  justify-content: center;
+  align-items: flex-start;
+  overflow-y: auto;
+  padding: 2vh;
+}
+#config-overlay.open { display: flex; }
+
+.config-panel {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 1rem;
+  padding: 2rem;
+  width: 100%;
+  max-width: 980px;
+  margin: auto;
+}
+
+.config-panel h2 {
+  color: var(--gold);
+  font-size: 1.7rem;
+  margin-bottom: 1.8rem;
+  text-align: center;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.cfg-section {
+  margin-bottom: 2rem;
+}
+
+.cfg-section-title {
+  font-size: 0.9rem;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.18em;
+  margin-bottom: 0.9rem;
+  padding-bottom: 0.5rem;
+  border-bottom: 1px solid var(--border);
+}
+
+.cfg-row {
+  display: flex;
+  gap: 1rem;
+  flex-wrap: wrap;
+  margin-bottom: 0.8rem;
+}
+
+.cfg-field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+  flex: 1;
+  min-width: 130px;
+}
+
+.cfg-field label {
+  font-size: 0.8rem;
+  color: var(--text-dim);
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+}
+
+.cfg-field input[type="text"],
+.cfg-field input[type="time"],
+.cfg-field input[type="number"],
+.cfg-field select {
+  background: var(--bg);
+  border: 1px solid var(--border);
+  color: var(--text);
+  padding: 0.5em 0.75em;
+  border-radius: 0.4em;
+  font-size: 1rem;
+  width: 100%;
+  font-family: inherit;
+}
+.cfg-field input:focus, .cfg-field select:focus {
+  outline: none;
+  border-color: var(--gold);
+}
+
+/* Levels table */
+.levels-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.95rem;
+}
+.levels-table th {
+  padding: 0.5rem 0.4rem;
+  text-align: center;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  font-size: 0.8rem;
+  border-bottom: 1px solid var(--border);
+}
+.levels-table td {
+  padding: 0.35rem 0.3rem;
+  text-align: center;
+  vertical-align: middle;
+}
+.levels-table tr.is-break td { background: rgba(212,160,23,0.08); }
+.levels-table input[type="number"],
+.levels-table input[type="text"] {
+  background: var(--bg);
+  border: 1px solid var(--border);
+  color: var(--text);
+  padding: 0.38em 0.5em;
+  border-radius: 0.35em;
+  font-size: 0.95rem;
+  width: 100%;
+  text-align: center;
+  font-family: inherit;
+}
+.levels-table input:focus { outline: none; border-color: var(--gold); }
+.levels-table input:disabled { opacity: 0.3; }
+
+.level-num { color: var(--text-muted); font-size: 0.85rem; }
+
+.cb-break { width: 18px; height: 18px; cursor: pointer; accent-color: var(--gold); }
+
+/* Chip config rows */
+.chip-cfg-rows { display: flex; flex-direction: column; gap: 0.6rem; }
+.chip-cfg-row {
+  display: flex;
+  gap: 0.75rem;
+  align-items: flex-end;
+}
+.chip-preview {
+  width: 36px; height: 36px;
+  border-radius: 50%;
+  border: 2px dashed rgba(255,255,255,0.3);
+  flex-shrink: 0;
+  margin-bottom: 2px;
+}
+.chip-cfg-row .cfg-field { min-width: 80px; }
+
+input[type="color"] {
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 0.4em;
+  width: 100%;
+  height: 38px;
+  padding: 2px 4px;
+  cursor: pointer;
+}
+
+.btn-xs {
+  padding: 0.35em 0.7em;
+  font-size: 0.82rem;
+  border: none;
+  border-radius: 0.35em;
+  cursor: pointer;
+  font-weight: 700;
+  text-transform: uppercase;
+}
+.btn-xs-red { background: var(--red); color: #fff; }
+.btn-xs-green { background: var(--green-dim); color: #fff; }
+.btn-xs-ghost { background: var(--surface2); color: var(--text-dim); border: 1px solid var(--border); }
+
+.cfg-add-row {
+  margin-top: 0.75rem;
+  display: flex;
+  gap: 0.5rem;
+}
+
+.cfg-actions {
+  display: flex;
+  justify-content: center;
+  gap: 1rem;
+  margin-top: 2rem;
+  padding-top: 1.5rem;
+  border-top: 1px solid var(--border);
+}
+
+/* ===================== FX ===================== */
+#level-flash {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 900;
+  opacity: 0;
+  background: rgba(46,204,113,0.12);
+  transition: opacity 0.6s;
+}
+#level-flash.show { opacity: 1; }
+
+#toast {
+  position: fixed;
+  bottom: 3vh;
+  left: 50%;
+  transform: translateX(-50%);
+  background: var(--gold);
+  color: #000;
+  padding: 0.6em 2em;
+  border-radius: 2em;
+  font-size: clamp(1rem, 1.8vw, 1.8rem);
+  font-weight: 700;
+  z-index: 9999;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.3s;
+  white-space: nowrap;
+}
+#toast.show { opacity: 1; }
+
+/* Keyboard shortcut hint */
+.kbd-hints {
+  position: fixed;
+  bottom: 0.5vh;
+  right: 1vw;
+  font-size: clamp(0.55rem, 0.8vw, 0.8rem);
+  color: var(--text-muted);
+  opacity: 0.6;
+  pointer-events: none;
+}
+</style>
+</head>
+<body>
+
+<div id="level-flash"></div>
+<div id="toast"></div>
+
+<!-- ===================== MAIN APP ===================== -->
+<div id="app">
+
+  <!-- TOP BAR -->
+  <div class="top-bar">
+    <div id="tournament-name">Poker Tournament</div>
+    <div id="round-badge">ROUND 1 OF 13</div>
+    <div class="wall-clock">
+      <span class="clock-label" id="clock-label">CURRENT TIME</span>
+      <span class="clock-time" id="clock-time">7:30 PM</span>
+    </div>
+  </div>
+
+  <!-- TIMER AREA -->
+  <div class="timer-area">
+
+    <!-- Shown while idle: start time -->
+    <div id="start-time-display">
+      <div class="timer-section-label" id="start-time-label">TOURNAMENT STARTS AT</div>
+      <div id="start-time-value">7:00 PM</div>
+      <div id="status-text">PRESS START TO BEGIN</div>
+    </div>
+
+    <!-- Shown while running/paused/finished -->
+    <div id="countdown-display">
+      <div class="timer-section-label">TIME REMAINING</div>
+      <div id="countdown">20:00</div>
+      <div class="progress-wrap">
+        <div class="progress-bar" id="progress-bar" style="width:100%"></div>
+      </div>
+      <div id="status-text-running"></div>
+    </div>
+
+  </div>
+
+  <!-- BLINDS AREA -->
+  <div class="blinds-area">
+    <div class="blinds-block">
+      <div class="blinds-block-label" id="current-label">CURRENT BLINDS</div>
+      <div id="current-blinds-value">100 / 200</div>
+    </div>
+    <div class="blinds-block" id="next-blinds-block">
+      <div class="blinds-block-label">NEXT LEVEL</div>
+      <div id="next-blinds-value">200 / 400</div>
+      <div class="next-round-info" id="next-round-info">ROUND 3</div>
+    </div>
+  </div>
+
+  <!-- CHIPS AREA -->
+  <div class="chips-area" id="chips-area"></div>
+
+  <!-- CONTROLS BAR -->
+  <div class="controls-bar">
+    <button class="btn btn-green"  id="btn-start"  onclick="handleStart()">START</button>
+    <button class="btn btn-orange" id="btn-pause"  onclick="handlePause()" style="display:none">PAUSE</button>
+    <button class="btn btn-ghost"  id="btn-prev"   onclick="handlePrev()">◀ PREV</button>
+    <button class="btn btn-gold"   id="btn-next"   onclick="handleNext()">NEXT ▶</button>
+    <button class="btn btn-red"    id="btn-reset"  onclick="handleReset()" style="display:none">RESET</button>
+    <button class="btn btn-ghost"  onclick="showConfig()">⚙ SETTINGS</button>
+    <button class="btn btn-ghost"  onclick="toggleFullscreen()">⛶ FULLSCREEN</button>
+  </div>
+
+</div>
+
+<!-- ===================== CONFIG OVERLAY ===================== -->
+<div id="config-overlay">
+  <div class="config-panel">
+    <h2>⚙ Tournament Settings</h2>
+
+    <!-- General -->
+    <div class="cfg-section">
+      <div class="cfg-section-title">General</div>
+      <div class="cfg-row">
+        <div class="cfg-field">
+          <label>Tournament Name</label>
+          <input type="text" id="cfg-name" placeholder="Poker Tournament">
+        </div>
+        <div class="cfg-field" style="max-width:160px">
+          <label>Start Time</label>
+          <input type="time" id="cfg-start-time" value="19:00">
+        </div>
+        <div class="cfg-field" style="max-width:200px">
+          <label>Warning Alert (seconds before end)</label>
+          <input type="number" id="cfg-warning" min="0" max="300" step="5" value="60">
+        </div>
+      </div>
+    </div>
+
+    <!-- Blind Levels -->
+    <div class="cfg-section">
+      <div class="cfg-section-title">Blind Levels</div>
+      <table class="levels-table">
+        <thead>
+          <tr>
+            <th style="width:36px">#</th>
+            <th>Duration (min)</th>
+            <th>Small Blind</th>
+            <th>Big Blind</th>
+            <th style="width:60px">Break</th>
+            <th style="width:42px"></th>
+          </tr>
+        </thead>
+        <tbody id="levels-tbody"></tbody>
+      </table>
+      <div class="cfg-add-row">
+        <button class="btn-xs btn-xs-green" onclick="addLevelRow()">+ Add Level</button>
+        <button class="btn-xs btn-xs-ghost" onclick="addBreakRow()">+ Add Break</button>
+      </div>
+    </div>
+
+    <!-- Chips -->
+    <div class="cfg-section">
+      <div class="cfg-section-title">Chip Denominations</div>
+      <div class="chip-cfg-rows" id="chip-cfg-rows"></div>
+      <div class="cfg-add-row">
+        <button class="btn-xs btn-xs-green" onclick="addChipRow()">+ Add Chip</button>
+      </div>
+    </div>
+
+    <div class="cfg-actions">
+      <button class="btn btn-green" onclick="saveConfig()">SAVE & APPLY</button>
+      <button class="btn btn-ghost" onclick="hideConfig()">CANCEL</button>
+    </div>
+  </div>
+</div>
+
+<div class="kbd-hints">SPACE: pause &nbsp;|&nbsp; ← →: level &nbsp;|&nbsp; F: fullscreen</div>
+
+<script>
+// ===================== DEFAULT CONFIG =====================
+const DEFAULTS = {
+  name: 'Poker Tournament',
+  startTime: '19:00',
+  warnSecs: 60,
+  levels: [
+    { dur: 20, sb: 25,   bb: 50,   brk: false },
+    { dur: 20, sb: 50,   bb: 100,  brk: false },
+    { dur: 20, sb: 75,   bb: 150,  brk: false },
+    { dur: 20, sb: 100,  bb: 200,  brk: false },
+    { dur: 15, sb: 0,    bb: 0,    brk: true  },
+    { dur: 20, sb: 150,  bb: 300,  brk: false },
+    { dur: 20, sb: 200,  bb: 400,  brk: false },
+    { dur: 20, sb: 300,  bb: 600,  brk: false },
+    { dur: 20, sb: 400,  bb: 800,  brk: false },
+    { dur: 15, sb: 0,    bb: 0,    brk: true  },
+    { dur: 20, sb: 500,  bb: 1000, brk: false },
+    { dur: 20, sb: 750,  bb: 1500, brk: false },
+    { dur: 20, sb: 1000, bb: 2000, brk: false },
+  ],
+  chips: [
+    { val: 1,    color: '#e8e8e8', lbl: '1'    },
+    { val: 5,    color: '#c0392b', lbl: '5'    },
+    { val: 25,   color: '#1a5276', lbl: '25'   },
+    { val: 100,  color: '#1e8449', lbl: '100'  },
+    { val: 500,  color: '#212121', lbl: '500'  },
+    { val: 1000, color: '#6c3483', lbl: '1K'   },
+  ]
+};
+
+// ===================== STATE =====================
+let cfg = loadCfg();
+let state = {
+  phase: 'idle',     // idle | running | paused | done
+  lvl: 0,
+  secsLeft: 0,
+  totalSecs: 0,
+  tid: null,
+  warnPlayed: false,
+};
+
+// ===================== PERSISTENCE =====================
+function loadCfg() {
+  try {
+    const s = localStorage.getItem('ptcfg');
+    if (s) return JSON.parse(s);
+  } catch(e) {}
+  return JSON.parse(JSON.stringify(DEFAULTS));
+}
+function persistCfg() {
+  localStorage.setItem('ptcfg', JSON.stringify(cfg));
+}
+
+// ===================== AUDIO =====================
+let actx = null;
+function beep(freq, dur, vol=0.5, type='sine') {
+  try {
+    if (!actx) actx = new (window.AudioContext || window.webkitAudioContext)();
+    const o = actx.createOscillator();
+    const g = actx.createGain();
+    o.connect(g); g.connect(actx.destination);
+    o.type = type; o.frequency.value = freq;
+    g.gain.setValueAtTime(vol, actx.currentTime);
+    g.gain.exponentialRampToValueAtTime(0.001, actx.currentTime + dur);
+    o.start(); o.stop(actx.currentTime + dur);
+  } catch(e) {}
+}
+function playWarning()  { beep(660, 0.25, 0.45); }
+function playLevelEnd() {
+  beep(1046, 0.35, 0.55);
+  setTimeout(() => beep(880, 0.35, 0.55), 370);
+  setTimeout(() => beep(698, 0.5,  0.55), 740);
+}
+
+// ===================== HELPERS =====================
+function fmt(secs) {
+  const m = Math.floor(secs / 60), s = secs % 60;
+  return `${String(m).padStart(2,'0')}:${String(s).padStart(2,'0')}`;
+}
+
+function fmtNum(n) {
+  if (n >= 1000000) return (n/1000000).toFixed(n%1000000===0?0:1)+'M';
+  if (n >= 1000)    return (n/1000).toFixed(n%1000===0?0:1)+'K';
+  return String(n);
+}
+
+function fmtTime12(t24) {
+  if (!t24) return '';
+  const [h,m] = t24.split(':').map(Number);
+  const ampm = h >= 12 ? 'PM' : 'AM';
+  return `${h%12||12}:${String(m).padStart(2,'0')} ${ampm}`;
+}
+
+function contrastColor(hex) {
+  const c = hex.replace('#','');
+  const r = parseInt(c.slice(0,2),16), g = parseInt(c.slice(2,4),16), b = parseInt(c.slice(4,6),16);
+  return (0.299*r + 0.587*g + 0.114*b)/255 > 0.5 ? '#000' : '#fff';
+}
+
+function currentLevel() { return cfg.levels[state.lvl]; }
+function nextLevel()    { return cfg.levels[state.lvl+1]; }
+
+// ===================== RENDER =====================
+function render() {
+  const lvl = currentLevel();
+  const total = cfg.levels.length;
+
+  // Name & round badge
+  document.getElementById('tournament-name').textContent = (cfg.name||'Poker Tournament').toUpperCase();
+  document.getElementById('round-badge').textContent = `ROUND ${state.lvl+1} OF ${total}`;
+
+  // Timer section switching
+  const idle    = state.phase === 'idle';
+  const done    = state.phase === 'done';
+  document.getElementById('start-time-display').style.display  = idle ? 'flex' : 'none';
+  document.getElementById('countdown-display').style.display   = idle ? 'none' : 'flex';
+
+  if (idle) {
+    document.getElementById('start-time-value').textContent = fmtTime12(cfg.startTime) || '--:--';
+    document.getElementById('start-time-label').textContent = 'TOURNAMENT STARTS AT';
+    document.getElementById('status-text').textContent     = 'PRESS START TO BEGIN';
+    document.getElementById('status-text').className      = '';
+  } else {
+    // Countdown
+    const cdEl = document.getElementById('countdown');
+    cdEl.textContent = done ? '00:00' : fmt(state.secsLeft);
+    cdEl.classList.remove('warning','critical');
+    if (!done && state.phase === 'running') {
+      if (state.secsLeft <= 30)                 cdEl.classList.add('critical');
+      else if (state.secsLeft <= cfg.warnSecs)  cdEl.classList.add('warning');
+    }
+
+    // Progress bar
+    const pct = state.totalSecs > 0 ? (state.secsLeft / state.totalSecs) * 100 : 0;
+    const pb  = document.getElementById('progress-bar');
+    pb.style.width = pct + '%';
+    pb.classList.remove('warning','critical');
+    if (state.secsLeft <= 30)                 pb.classList.add('critical');
+    else if (state.secsLeft <= cfg.warnSecs)  pb.classList.add('warning');
+
+    // Status text (running/paused/done)
+    const st = document.getElementById('status-text-running');
+    st.className = '';
+    if (done)                      { st.textContent = 'TOURNAMENT COMPLETE'; st.className = 'finished'; }
+    else if (state.phase==='paused') { st.textContent = '⏸ PAUSED';            st.className = 'paused'; }
+    else                             { st.textContent = ''; }
+  }
+
+  // Blinds
+  const curLabel = document.getElementById('current-label');
+  const curVal   = document.getElementById('current-blinds-value');
+  if (lvl.brk) {
+    curLabel.textContent = 'BREAK';
+    curVal.textContent   = '— BREAK —';
+    curVal.className     = 'break';
+  } else {
+    curLabel.textContent = 'CURRENT BLINDS';
+    curVal.textContent   = `${fmtNum(lvl.sb)} / ${fmtNum(lvl.bb)}`;
+    curVal.className     = '';
+  }
+
+  const nxtBlock = document.getElementById('next-blinds-block');
+  const nxt = nextLevel();
+  if (nxt) {
+    nxtBlock.style.visibility = 'visible';
+    const nxtVal  = document.getElementById('next-blinds-value');
+    const nxtInfo = document.getElementById('next-round-info');
+    nxtInfo.textContent = `ROUND ${state.lvl+2}`;
+    if (nxt.brk) {
+      nxtVal.textContent  = '— BREAK —';
+      nxtVal.className    = 'break';
+    } else {
+      nxtVal.textContent  = `${fmtNum(nxt.sb)} / ${fmtNum(nxt.bb)}`;
+      nxtVal.className    = '';
+    }
+  } else {
+    nxtBlock.style.visibility = 'hidden';
+  }
+
+  // Buttons
+  const btnStart = document.getElementById('btn-start');
+  const btnPause = document.getElementById('btn-pause');
+  const btnReset = document.getElementById('btn-reset');
+  const btnPrev  = document.getElementById('btn-prev');
+  const btnNext  = document.getElementById('btn-next');
+
+  btnStart.style.display = (state.phase==='idle'||state.phase==='done') ? '' : 'none';
+  btnPause.style.display = (state.phase==='running'||state.phase==='paused') ? '' : 'none';
+  btnReset.style.display = (state.phase!=='idle') ? '' : 'none';
+
+  if (state.phase==='done') {
+    btnStart.textContent = 'RESTART';
+    btnStart.className   = 'btn btn-gold';
+  } else {
+    btnStart.textContent = 'START';
+    btnStart.className   = 'btn btn-green';
+  }
+
+  if (state.phase==='paused') {
+    btnPause.textContent = '▶ RESUME';
+    btnPause.className   = 'btn btn-green';
+  } else {
+    btnPause.textContent = 'PAUSE';
+    btnPause.className   = 'btn btn-orange';
+  }
+
+  btnPrev.disabled = (state.lvl === 0);
+  btnNext.disabled = (state.lvl >= cfg.levels.length-1);
+}
+
+function renderChips() {
+  const area = document.getElementById('chips-area');
+  area.innerHTML = '';
+  cfg.chips.forEach(chip => {
+    const tc = contrastColor(chip.color);
+    const el = document.createElement('div');
+    el.className = 'chip-item';
+    el.innerHTML = `
+      <div class="chip-circle" style="background:${chip.color};color:${tc}">
+        ${chip.lbl || fmtNum(chip.val)}
+      </div>
+      <div class="chip-denom">${fmtNum(chip.val)}</div>
+    `;
+    area.appendChild(el);
+  });
+}
+
+// ===================== WALL CLOCK =====================
+function tickClock() {
+  const now   = new Date();
+  const h     = now.getHours(), m = now.getMinutes(), s = now.getSeconds();
+  const ampm  = h >= 12 ? 'PM' : 'AM';
+  const hh    = h%12||12;
+  document.getElementById('clock-time').textContent =
+    `${hh}:${String(m).padStart(2,'0')}:${String(s).padStart(2,'0')} ${ampm}`;
+}
+
+// ===================== CONTROLS =====================
+function handleStart() {
+  if (state.phase === 'done') {
+    // restart from beginning
+    state.lvl = 0;
+  }
+  state.phase     = 'running';
+  state.totalSecs = currentLevel().dur * 60;
+  state.secsLeft  = state.totalSecs;
+  state.warnPlayed = false;
+  startTick();
+  render();
+}
+
+function handlePause() {
+  if (state.phase === 'running') {
+    state.phase = 'paused';
+    clearInterval(state.tid); state.tid = null;
+  } else if (state.phase === 'paused') {
+    state.phase = 'running';
+    startTick();
+  }
+  render();
+}
+
+function handleNext() {
+  if (state.lvl < cfg.levels.length-1) advance(true);
+}
+
+function handlePrev() {
+  if (state.lvl > 0) {
+    state.lvl--;
+    resetLevelTimer();
+    render();
+    flash();
+  }
+}
+
+function handleReset() {
+  clearInterval(state.tid); state.tid = null;
+  state.phase     = 'idle';
+  state.lvl       = 0;
+  state.secsLeft  = cfg.levels[0].dur * 60;
+  state.totalSecs = state.secsLeft;
+  render();
+}
+
+function advance(manual=false) {
+  if (state.lvl >= cfg.levels.length-1) {
+    // finished
+    clearInterval(state.tid); state.tid = null;
+    state.phase    = 'done';
+    state.secsLeft = 0;
+    render();
+    toast('TOURNAMENT COMPLETE!');
+    return;
+  }
+  if (!manual) playLevelEnd();
+  flash();
+  state.lvl++;
+  resetLevelTimer();
+  if (state.phase === 'running') {
+    clearInterval(state.tid);
+    startTick();
+  }
+  render();
+  toast(`ROUND ${state.lvl+1} — ${currentLevel().brk ? 'BREAK' : `${fmtNum(currentLevel().sb)} / ${fmtNum(currentLevel().bb)}`}`);
+}
+
+function resetLevelTimer() {
+  state.totalSecs  = currentLevel().dur * 60;
+  state.secsLeft   = state.totalSecs;
+  state.warnPlayed = false;
+}
+
+function startTick() {
+  clearInterval(state.tid);
+  state.tid = setInterval(() => {
+    if (state.secsLeft <= 0) {
+      clearInterval(state.tid); state.tid = null;
+      advance(false);
+      return;
+    }
+    state.secsLeft--;
+    if (!state.warnPlayed && state.secsLeft === cfg.warnSecs) {
+      playWarning(); state.warnPlayed = true;
+    }
+    render();
+  }, 1000);
+}
+
+// ===================== EFFECTS =====================
+function flash() {
+  const el = document.getElementById('level-flash');
+  el.classList.add('show');
+  setTimeout(() => el.classList.remove('show'), 600);
+}
+
+let toastTimer = null;
+function toast(msg) {
+  const el = document.getElementById('toast');
+  el.textContent = msg;
+  el.classList.add('show');
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => el.classList.remove('show'), 3200);
+}
+
+// ===================== FULLSCREEN =====================
+function toggleFullscreen() {
+  if (!document.fullscreenElement) {
+    document.documentElement.requestFullscreen().catch(()=>{});
+  } else {
+    document.exitFullscreen().catch(()=>{});
+  }
+}
+
+// ===================== KEYBOARD =====================
+document.addEventListener('keydown', e => {
+  if (document.getElementById('config-overlay').classList.contains('open')) return;
+  const tag = e.target.tagName;
+  if (tag==='INPUT'||tag==='SELECT'||tag==='TEXTAREA') return;
+  switch(e.code) {
+    case 'Space':
+      e.preventDefault();
+      if (state.phase==='idle')                                   handleStart();
+      else if (state.phase==='running'||state.phase==='paused')   handlePause();
+      break;
+    case 'ArrowRight': handleNext(); break;
+    case 'ArrowLeft':  handlePrev(); break;
+    case 'KeyF':       toggleFullscreen(); break;
+  }
+});
+
+// ===================== CONFIG UI =====================
+function showConfig() {
+  if (state.phase === 'running') handlePause();
+
+  document.getElementById('cfg-name').value       = cfg.name || '';
+  document.getElementById('cfg-start-time').value  = cfg.startTime || '19:00';
+  document.getElementById('cfg-warning').value     = cfg.warnSecs ?? 60;
+
+  renderLevelsTable();
+  renderChipsCfg();
+
+  document.getElementById('config-overlay').classList.add('open');
+}
+
+function hideConfig() {
+  document.getElementById('config-overlay').classList.remove('open');
+}
+
+function saveConfig() {
+  cfg.name      = document.getElementById('cfg-name').value.trim() || 'Poker Tournament';
+  cfg.startTime = document.getElementById('cfg-start-time').value;
+  cfg.warnSecs  = parseInt(document.getElementById('cfg-warning').value) || 60;
+
+  // Collect levels
+  const rows = document.querySelectorAll('#levels-tbody tr[data-row]');
+  cfg.levels = Array.from(rows).map(tr => {
+    const ins = tr.querySelectorAll('input');
+    return {
+      dur: parseFloat(ins[0].value) || 20,
+      sb:  parseInt(ins[1].value)   || 0,
+      bb:  parseInt(ins[2].value)   || 0,
+      brk: ins[3].checked,
+    };
+  });
+
+  // Collect chips
+  const chipRows = document.querySelectorAll('.chip-cfg-row');
+  cfg.chips = Array.from(chipRows).map(row => {
+    const ins = row.querySelectorAll('input');
+    return {
+      val:   parseInt(ins[0].value) || 1,
+      color: ins[1].value,
+      lbl:   ins[2].value.trim(),
+    };
+  }).filter(c => c.val > 0);
+
+  // Guard bounds
+  if (state.lvl >= cfg.levels.length) {
+    state.lvl   = 0;
+    state.phase = 'idle';
+    clearInterval(state.tid); state.tid = null;
+  }
+  if (state.phase === 'idle' || state.phase === 'paused') {
+    state.totalSecs = currentLevel().dur * 60;
+    state.secsLeft  = state.totalSecs;
+  }
+
+  persistCfg();
+  hideConfig();
+  render();
+  renderChips();
+  toast('Settings saved');
+}
+
+// Levels table
+function renderLevelsTable() {
+  const tbody = document.getElementById('levels-tbody');
+  tbody.innerHTML = '';
+  cfg.levels.forEach((lvl, i) => appendLevelRow(lvl));
+  renumber();
+}
+
+function appendLevelRow(lvl = { dur:20, sb:100, bb:200, brk:false }) {
+  const tbody  = document.getElementById('levels-tbody');
+  const tr     = document.createElement('tr');
+  tr.setAttribute('data-row','1');
+  if (lvl.brk) tr.classList.add('is-break');
+
+  tr.innerHTML = `
+    <td class="level-num">?</td>
+    <td><input type="number" value="${lvl.dur}" min="1" max="180" step="1" style="width:72px"></td>
+    <td><input type="number" value="${lvl.sb}"  min="0" step="1"  style="width:90px" ${lvl.brk?'disabled':''}></td>
+    <td><input type="number" value="${lvl.bb}"  min="0" step="1"  style="width:90px" ${lvl.brk?'disabled':''}></td>
+    <td><input type="checkbox" class="cb-break" ${lvl.brk?'checked':''} onchange="onBreakToggle(this)"></td>
+    <td><button class="btn-xs btn-xs-red" onclick="removeRow(this)">✕</button></td>
+  `;
+  tbody.appendChild(tr);
+}
+
+function addLevelRow() {
+  // Guess next blinds based on last non-break row
+  const rows = document.querySelectorAll('#levels-tbody tr[data-row]');
+  let sb=100, bb=200;
+  for (let i=rows.length-1; i>=0; i--) {
+    const ins = rows[i].querySelectorAll('input');
+    if (!ins[3].checked && parseInt(ins[1].value)>0) {
+      sb = parseInt(ins[1].value)*2; bb = parseInt(ins[2].value)*2; break;
+    }
+  }
+  appendLevelRow({ dur:20, sb, bb, brk:false });
+  renumber();
+}
+
+function addBreakRow() {
+  appendLevelRow({ dur:15, sb:0, bb:0, brk:true });
+  renumber();
+}
+
+function removeRow(btn) {
+  const tbody = document.getElementById('levels-tbody');
+  if (tbody.querySelectorAll('tr[data-row]').length <= 1) return;
+  btn.closest('tr').remove();
+  renumber();
+}
+
+function renumber() {
+  document.querySelectorAll('#levels-tbody tr[data-row]').forEach((tr,i) => {
+    tr.querySelector('.level-num').textContent = i+1;
+  });
+}
+
+function onBreakToggle(cb) {
+  const tr  = cb.closest('tr');
+  const ins = tr.querySelectorAll('input[type="number"]');
+  ins.forEach(inp => { inp.disabled = cb.checked; if(cb.checked) inp.value=0; });
+  tr.classList.toggle('is-break', cb.checked);
+}
+
+// Chips config
+function renderChipsCfg() {
+  const container = document.getElementById('chip-cfg-rows');
+  container.innerHTML = '';
+  cfg.chips.forEach(c => appendChipRow(c));
+}
+
+function appendChipRow(chip = { val:100, color:'#888888', lbl:'' }) {
+  const container = document.getElementById('chip-cfg-rows');
+  const div = document.createElement('div');
+  div.className = 'chip-cfg-row';
+  div.innerHTML = `
+    <div class="chip-preview" style="background:${chip.color}"></div>
+    <div class="cfg-field" style="max-width:90px">
+      <label>Value</label>
+      <input type="number" value="${chip.val}" min="1" placeholder="100">
+    </div>
+    <div class="cfg-field" style="max-width:80px">
+      <label>Color</label>
+      <input type="color" value="${chip.color}"
+        onchange="this.closest('.chip-cfg-row').querySelector('.chip-preview').style.background=this.value">
+    </div>
+    <div class="cfg-field" style="max-width:80px">
+      <label>Label</label>
+      <input type="text" value="${chip.lbl}" placeholder="auto">
+    </div>
+    <button class="btn-xs btn-xs-red" onclick="this.closest('.chip-cfg-row').remove()" style="margin-bottom:2px">✕</button>
+  `;
+  container.appendChild(div);
+}
+
+function addChipRow() { appendChipRow(); }
+
+// ===================== INIT =====================
+function init() {
+  state.lvl       = 0;
+  state.totalSecs = cfg.levels[0].dur * 60;
+  state.secsLeft  = state.totalSecs;
+  state.phase     = 'idle';
+
+  renderChips();
+  render();
+  tickClock();
+  setInterval(tickClock, 1000);
+
+  // Show config on first-ever load (no saved config)
+  if (!localStorage.getItem('ptcfg')) {
+    setTimeout(showConfig, 300);
+  }
+}
+
+init();
+</script>
+</body>
+</html>

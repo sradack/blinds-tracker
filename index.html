@@ -99,6 +99,7 @@ html, body {
   justify-content: center;
   position: relative;
   padding: 1vh 2vw;
+  container-type: inline-size;
 }
 
 .timer-section-label {
@@ -116,7 +117,8 @@ html, body {
   align-items: center;
 }
 #start-time-value {
-  font-size: clamp(6rem, 22vw, 28vh);
+  font-size: clamp(3rem, 18cqi, 22vh);
+  white-space: nowrap;
   font-weight: 900;
   color: var(--gold);
   letter-spacing: 0.04em;
@@ -132,7 +134,8 @@ html, body {
   width: 100%;
 }
 #countdown {
-  font-size: clamp(6rem, 22vw, 28vh);
+  font-size: clamp(4rem, 22cqi, 28vh);
+  white-space: nowrap;
   font-weight: 900;
   letter-spacing: 0.02em;
   line-height: 1;
@@ -147,7 +150,7 @@ html, body {
   padding-bottom: 2px;
 }
 #countdown-input {
-  font-size: clamp(5rem, 18vw, 22vh);
+  font-size: clamp(3rem, 18cqi, 22vh);
   font-family: 'Share Tech Mono', ui-monospace, 'Cascadia Code', 'Segoe UI Mono', Consolas, monospace;
   font-weight: 900;
   letter-spacing: 0.02em;
@@ -205,6 +208,7 @@ html, body {
   border-top: 1px solid var(--border);
   border-bottom: 1px solid var(--border);
   background: var(--surface);
+  container-type: inline-size;
 }
 
 .blinds-block {
@@ -230,7 +234,8 @@ html, body {
 }
 
 #current-blinds-value {
-  font-size: clamp(3rem, 7vw, 12vh);
+  font-size: clamp(2rem, 7cqi, 12vh);
+  white-space: nowrap;
   font-weight: 900;
   color: var(--green);
   line-height: 1;
@@ -238,7 +243,8 @@ html, body {
 #current-blinds-value.break { color: var(--gold); }
 
 #next-blinds-value {
-  font-size: clamp(1.8rem, 4.5vw, 8vh);
+  font-size: clamp(1.5rem, 4.5cqi, 8vh);
+  white-space: nowrap;
   font-weight: 700;
   color: var(--text);
   line-height: 1;

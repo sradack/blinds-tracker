@@ -252,6 +252,52 @@ html, body {
   letter-spacing: 0.12em;
 }
 
+/* ---- STARTING STACK ---- */
+#stack-display {
+  display: none;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 1.5vh;
+  padding: 1.5vh 2vw;
+}
+.stack-header {
+  display: flex;
+  align-items: baseline;
+  gap: 1.2vw;
+}
+.stack-label {
+  font-size: clamp(1rem, 1.8vw, 1.8rem);
+  text-transform: uppercase;
+  letter-spacing: 0.2em;
+  color: var(--text-dim);
+}
+.stack-value {
+  font-size: clamp(2rem, 5vw, 7vh);
+  font-weight: 900;
+  color: var(--gold);
+  font-family: 'Share Tech Mono', ui-monospace, 'Cascadia Code', 'Segoe UI Mono', Consolas, monospace;
+}
+.stack-chips {
+  display: flex;
+  gap: clamp(16px, 3vw, 52px);
+  align-items: center;
+  flex-wrap: wrap;
+  justify-content: center;
+}
+.stack-chip-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.6vh;
+}
+.stack-chip-count {
+  font-size: clamp(1rem, 1.8vw, 1.8rem);
+  font-weight: 700;
+  color: var(--text);
+  font-family: 'Share Tech Mono', ui-monospace, 'Cascadia Code', 'Segoe UI Mono', Consolas, monospace;
+}
+
 /* ---- CHIPS AREA ---- */
 .chips-area {
   display: flex;
@@ -606,7 +652,14 @@ input[type="color"] {
     </div>
   </div>
 
-  <!-- CHIPS AREA -->
+  <!-- CHIPS / STARTING STACK AREA -->
+  <div id="stack-display">
+    <div class="stack-header">
+      <span class="stack-label">STARTING STACK</span>
+      <span class="stack-value" id="stack-value">10,000</span>
+    </div>
+    <div class="stack-chips" id="stack-chips"></div>
+  </div>
   <div class="chips-area" id="chips-area"></div>
 
   <!-- CONTROLS BAR -->
@@ -638,6 +691,10 @@ input[type="color"] {
         <div class="cfg-field" style="max-width:160px">
           <label>Start Time</label>
           <input type="time" id="cfg-start-time" value="19:00">
+        </div>
+        <div class="cfg-field" style="max-width:160px">
+          <label>Starting Stack</label>
+          <input type="number" id="cfg-start-stack" min="0" step="100">
         </div>
         <div class="cfg-field" style="max-width:200px">
           <label>Warning Alert (seconds before end)</label>
@@ -731,6 +788,7 @@ const DEFAULTS = {
   name: 'Poker Tournament',
   startTime: '19:00',
   warnSecs: 60,
+  startStack: 10000,
   levels: [
     { dur: 20, sb: 25,   bb: 50,   brk: false },
     { dur: 20, sb: 50,   bb: 100,  brk: false },
@@ -948,28 +1006,105 @@ function render() {
 
   btnPrev.disabled = (state.lvl === 0);
   btnNext.disabled = (state.lvl >= cfg.levels.length-1);
+
+  // Starting stack breakdown vs chip denominations
+  const stackDisplay = document.getElementById('stack-display');
+  const chipsArea    = document.getElementById('chips-area');
+  if (idle && cfg.startStack) {
+    document.getElementById('stack-value').textContent = fmtNum(cfg.startStack);
+    stackDisplay.style.display = 'flex';
+    chipsArea.style.display    = 'none';
+  } else {
+    stackDisplay.style.display = 'none';
+    chipsArea.style.display    = 'flex';
+  }
+}
+
+function calcChipDistribution(startStack, chips, levels) {
+  if (!startStack || !chips.length) return [];
+
+  const sorted = [...chips].sort((a, b) => a.val - b.val);
+
+  // Only chips where you'd have at least 4 in a starting stack
+  const usable = sorted.filter(c => c.val > 0 && c.val * 4 <= startStack);
+  if (!usable.length) return [];
+
+  // Find the smallest blind to determine which chips are needed for early payments
+  const firstLevel = levels.find(l => !l.brk);
+  const minSB = firstLevel ? firstLevel.sb : usable[0].val;
+
+  const dist = usable.map(c => ({ ...c, count: 0 }));
+  let remaining = startStack;
+
+  // Phase 1: allocate comfort chips for early blind payments
+  // More of the very small chips, taper off as denominations grow
+  for (let i = 0; i < dist.length - 1; i++) {
+    const d = dist[i];
+    const isBlindChip = d.val <= minSB;
+    // Enough to make ~4 full BB payments at the level where this chip is the unit
+    const target = isBlindChip ? 10 : 4;
+    const affordable = Math.floor((remaining * 0.25) / d.val);
+    const count = Math.min(target, affordable);
+    d.count = count;
+    remaining -= count * d.val;
+  }
+
+  // Phase 2: bulk fill with largest chip
+  const largest = dist[dist.length - 1];
+  const bulk = Math.floor(remaining / largest.val);
+  largest.count += bulk;
+  remaining -= bulk * largest.val;
+
+  // Phase 3: spend any remainder on smaller chips (greedy down)
+  for (let i = dist.length - 2; i >= 0 && remaining > 0; i--) {
+    const d = dist[i];
+    if (remaining >= d.val) {
+      const extra = Math.floor(remaining / d.val);
+      d.count += extra;
+      remaining -= extra * d.val;
+    }
+  }
+
+  return dist.filter(d => d.count > 0);
+}
+
+function chipCircleHTML(chip, size = null) {
+  const tc = contrastColor(chip.color);
+  const border = tc === '#000' ? 'rgba(0,0,0,0.35)' : 'rgba(255,255,255,0.45)';
+  const sizeStyle = size ? `width:${size};height:${size};` : '';
+  return `
+    <div class="chip-circle" style="background:${chip.color};color:${tc};${sizeStyle}">
+      <svg style="position:absolute;inset:0;width:100%;height:100%;overflow:visible" aria-hidden="true">
+        <circle cx="50%" cy="50%" r="47%" fill="none"
+          stroke="${border}" stroke-width="4"
+          stroke-dasharray="6 12" stroke-linecap="round"/>
+      </svg>
+      ${chip.lbl || fmtNum(chip.val)}
+    </div>`;
+}
+
+function renderStackDisplay() {
+  const container = document.getElementById('stack-chips');
+  container.innerHTML = '';
+  const dist = calcChipDistribution(cfg.startStack, cfg.chips, cfg.levels);
+  dist.forEach(d => {
+    const el = document.createElement('div');
+    el.className = 'stack-chip-item';
+    el.innerHTML = `
+      ${chipCircleHTML(d, 'clamp(55px, 6vw, 95px)')}
+      <div class="stack-chip-count">×${d.count}</div>
+    `;
+    container.appendChild(el);
+  });
 }
 
 function renderChips() {
   const area = document.getElementById('chips-area');
   area.innerHTML = '';
   cfg.chips.forEach(chip => {
-    const tc = contrastColor(chip.color);
     const el = document.createElement('div');
     el.className = 'chip-item';
-    el.innerHTML = `
-      <div class="chip-circle" style="background:${chip.color};color:${tc}">
-        <svg style="position:absolute;inset:0;width:100%;height:100%;overflow:visible" aria-hidden="true">
-          <circle cx="50%" cy="50%" r="47%"
-            fill="none"
-            stroke="${tc === '#000' ? 'rgba(0,0,0,0.35)' : 'rgba(255,255,255,0.45)'}"
-            stroke-width="4"
-            stroke-dasharray="6 12"
-            stroke-linecap="round"/>
-        </svg>
-        ${chip.lbl || fmtNum(chip.val)}
-      </div>
-    `;
+    el.innerHTML = chipCircleHTML(chip);
     area.appendChild(el);
   });
 }
@@ -1159,6 +1294,7 @@ function showConfig() {
   document.getElementById('cfg-name').value       = cfg.name || '';
   document.getElementById('cfg-start-time').value  = cfg.startTime || '19:00';
   document.getElementById('cfg-warning').value     = cfg.warnSecs ?? 60;
+  document.getElementById('cfg-start-stack').value = cfg.startStack || '';
 
   renderLevelsTable();
   renderChipsCfg();
@@ -1173,7 +1309,8 @@ function hideConfig() {
 function saveConfig() {
   cfg.name      = document.getElementById('cfg-name').value.trim() || 'Poker Tournament';
   cfg.startTime = document.getElementById('cfg-start-time').value;
-  cfg.warnSecs  = parseInt(document.getElementById('cfg-warning').value) || 60;
+  cfg.warnSecs   = parseInt(document.getElementById('cfg-warning').value)    || 60;
+  cfg.startStack = parseInt(document.getElementById('cfg-start-stack').value) || 0;
 
   // Collect levels
   const rows = document.querySelectorAll('#levels-tbody tr[data-row]');
@@ -1213,6 +1350,7 @@ function saveConfig() {
   hideConfig();
   render();
   renderChips();
+  renderStackDisplay();
   toast('Settings saved');
 }
 
@@ -1340,6 +1478,8 @@ function autoGenerate() {
   renumber();
 
   document.getElementById('autogen-panel').style.display = 'none';
+  // Sync starting stack to the general settings field
+  document.getElementById('cfg-start-stack').value = stack;
 }
 
 function removeRow(btn) {
@@ -1410,6 +1550,7 @@ function init() {
   state.phase     = 'idle';
 
   renderChips();
+  renderStackDisplay();
   render();
   tickClock();
   setInterval(tickClock, 1000);

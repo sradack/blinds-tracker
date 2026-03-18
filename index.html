@@ -1779,10 +1779,6 @@ function init() {
   document.addEventListener('touchstart', showControls);
   showControls();
 
-  // Show config on first-ever load (no saved config)
-  if (!localStorage.getItem('ptcfg')) {
-    setTimeout(showConfig, 300);
-  }
 }
 
 init();

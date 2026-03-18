@@ -1421,6 +1421,23 @@ function toast(msg) {
 }
 
 // ===================== FULLSCREEN =====================
+// ===================== WAKE LOCK =====================
+let wakeLock = null;
+async function acquireWakeLock() {
+  if (!document.fullscreenElement) return;
+  if (!navigator.wakeLock) return;
+  try { wakeLock = await navigator.wakeLock.request('screen'); } catch(e) {}
+}
+function releaseWakeLock() {
+  if (wakeLock) { wakeLock.release(); wakeLock = null; }
+}
+document.addEventListener('fullscreenchange', () => {
+  document.fullscreenElement ? acquireWakeLock() : releaseWakeLock();
+});
+document.addEventListener('visibilitychange', () => {
+  if (document.visibilityState === 'visible') acquireWakeLock();
+});
+
 function toggleFullscreen() {
   if (!document.fullscreenElement) {
     document.documentElement.requestFullscreen().catch(()=>{});

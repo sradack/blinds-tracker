@@ -972,9 +972,16 @@ function persistCfg() {
 
 // ===================== AUDIO =====================
 let actx = null;
+document.addEventListener('visibilitychange', () => {
+  if (document.visibilityState === 'visible' && actx && actx.state === 'suspended') {
+    actx.resume();
+  }
+});
+
 function beep(freq, dur, vol=0.5, type='sine') {
   try {
     if (!actx) actx = new (window.AudioContext || window.webkitAudioContext)();
+    if (actx.state === 'suspended') actx.resume();
     const o = actx.createOscillator();
     const g = actx.createGain();
     o.connect(g); g.connect(actx.destination);

@@ -1326,26 +1326,29 @@ function handleReset() {
   render();
 }
 
-function advance(manual=false) {
-  if (state.lvl >= cfg.levels.length-1) {
-    // finished
+// Pure state mutation. Returns true if tournament is over.
+function advanceLevel() {
+  if (state.lvl >= cfg.levels.length - 1) {
     clearInterval(state.tid); state.tid = null;
-    state.phase    = 'done';
+    state.phase = 'done';
     state.secsLeft = 0;
-    render();
-    toast('TOURNAMENT COMPLETE!');
-    return;
+    return true;
   }
-  if (!manual) playLevelEnd();
-  flash();
   state.lvl++;
   resetLevelTimer();
-  if (state.phase === 'running') {
+  return false;
+}
+
+function advance(manual=false) {
+  if (!manual) playLevelEnd();
+  flash();
+  const done = advanceLevel();
+  if (!done && state.phase === 'running') {
     clearInterval(state.tid);
     startTick();
   }
   render();
-  toast(`ROUND ${state.lvl+1} — ${currentLevel().brk ? 'BREAK' : `${fmtNum(currentLevel().sb)} / ${fmtNum(currentLevel().bb)}`}`);
+  toast(done ? 'TOURNAMENT COMPLETE!' : `ROUND ${state.lvl+1} — ${currentLevel().brk ? 'BREAK' : `${fmtNum(currentLevel().sb)} / ${fmtNum(currentLevel().bb)}`}`);
 }
 
 function resetLevelTimer() {
@@ -1390,16 +1393,31 @@ function openTimeEdit() {
 
 function startTick() {
   clearInterval(state.tid);
+  let lastTs = Date.now();
   state.tid = setInterval(() => {
-    if (state.secsLeft <= 0) {
-      clearInterval(state.tid); state.tid = null;
-      advance(false);
-      return;
+    const now = Date.now();
+    let remaining = Math.round((now - lastTs) / 1000);
+    lastTs = now;
+
+    while (remaining > 0) {
+      if (remaining < state.secsLeft) {
+        state.secsLeft -= remaining;
+        if (!state.warnPlayed && state.secsLeft <= cfg.warnSecs) {
+          playWarning(); state.warnPlayed = true;
+        }
+        remaining = 0;
+      } else {
+        // Current level exhausted
+        remaining -= state.secsLeft;
+        playLevelEnd();
+        if (advanceLevel()) {
+          render();
+          toast('TOURNAMENT COMPLETE!');
+          return;
+        }
+      }
     }
-    state.secsLeft--;
-    if (!state.warnPlayed && state.secsLeft === cfg.warnSecs) {
-      playWarning(); state.warnPlayed = true;
-    }
+
     render();
   }, 1000);
 }
